@@ -77,9 +77,18 @@ with tempfile.NamedTemporaryFile() as f:
 	f.write(pushed_content)
 	f.flush()
 
+	# Save current mtime of tempfile
+	changelog_mtime = os.path.getmtime(f.name)
+
 	# Spawn Editor
 	EDITOR.append(f.name)
 	call(EDITOR)
 
-	# Copy new file
-	shutil.copyfile(f.name, "debian/changelog")
+	# Get new mtime of tempfile
+	changelog_new_mtime = os.path.getmtime(f.name)
+	
+	if changelog_new_mtime != changelog_mtime:
+		# Copy new file, if mtimes of tempfile are different
+		shutil.copyfile(f.name, "debian/changelog")
+	else:
+		print os.path.basename(__file__) + ": debian/changelog unmodified; exiting."
