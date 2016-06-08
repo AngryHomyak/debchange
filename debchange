@@ -7,6 +7,25 @@ import sys
 import re
 import time
 import shlex
+import argparse
+
+def increment_version(version):
+	v = re.findall('(\d+)', version)
+	last_rev = int(v.pop()) + 1
+	last_rev = str(last_rev)
+	new_version = re.sub('\d+', last_rev[::-1], version[::-1], 1)
+	return new_version[::-1]
+
+
+parser = argparse.ArgumentParser(add_help=False, usage="%(prog)s [options] [changelog entry]")
+parser.add_argument('-i', '--increment', dest='increment', action='store_true', help='Increase the Debian release number, adding a new changelog entry')
+parser.add_argument('-u', '--urgency',  dest='urgency', nargs=1, action='store', help='Use the specified urgency in the changelog entry being edited')
+# Urgency: low, medium, high, emergency, or critical
+parser.add_argument('-D', '--distribution',  dest='distribution', nargs=1, action='store', help='Use the specified distribution in the changelog entry being edited')
+# Example distribution names: unstable, experimental
+parser.add_argument("-h", "--help", action="help", help="Display this help message and exit")
+parser.add_argument('changelog_message', nargs='*', help='Changelog entry')
+opts = vars(parser.parse_args())
 
 EDITOR = os.environ.get('EDITOR', 'vim')
 EDITOR = shlex.split(EDITOR)
@@ -21,9 +40,20 @@ else:
 
 # Get original information ( package_name (version) distrib; urgency )
 first_line = changelog_content.split('\n')[0].strip()
-template = re.compile(r"^(?P<pkg_name>.*) \((?P<pkg_version>.*)\) (?P<pkg_distrib>.*); (?P<pkg_urgency>.*)$" )
+template = re.compile(r"^(?P<pkg_name>.*) \((?P<pkg_version>.*)\) (?P<pkg_distribution>.*); urgency=(?P<pkg_urgency>.*)$" )
 m = template.match(first_line)
 info = m.groupdict()
+
+if opts['increment']:
+	info['pkg_version'] = increment_version(info['pkg_version'])
+if opts['urgency']:
+	info['pkg_urgency'] = opts['urgency'][0]
+if opts['distribution']:
+	info['pkg_distribution'] = opts['distribution'][0]
+if opts['changelog_message']:
+	info['changelog_message'] = opts['changelog_message'][0]
+else:
+	info['changelog_message'] = ""
 
 # Get environment values for template
 info['debfullname'] = os.environ.get('DEBFULLNAME', 'Firstname Lastname')
@@ -32,9 +62,9 @@ info['debemail'] = os.environ.get('DEBEMAIL', 'name@example.org')
 info['debian_formatted_date'] = time.strftime("%a, %d %b %Y %H:%M:%S %z", time.localtime())
 
 # Templated Changelog Entry 
-template = """%(pkg_name)s (%(pkg_version)s) %(pkg_distrib)s; urgency=low
+template = """%(pkg_name)s (%(pkg_version)s) %(pkg_distribution)s; urgency=%(pkg_urgency)s
 
-  * 
+  * %(changelog_message)s
 
  -- %(debfullname)s <%(debemail)s>  %(debian_formatted_date)s
 
@@ -51,5 +81,5 @@ with tempfile.NamedTemporaryFile() as f:
 	EDITOR.append(f.name)
 	call(EDITOR)
 
-	# Copy new file 
+	# Copy new file
 	shutil.copyfile(f.name, "debian/changelog")
