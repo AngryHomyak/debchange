@@ -27,7 +27,7 @@ info = m.groupdict()
 info['debfullname'] = os.environ.get('DEBFULLNAME', 'Firstname Lastname')
 info['debemail'] = os.environ.get('DEBEMAIL', 'name@example.org')
 # date format example: Fri, 13 Jul 2012 15:05:04 +0200
-info['debian_formatted_date'] = time.strftime("%a, %d %b %Y %H:%M:%S +0200", time.localtime())
+info['debian_formatted_date'] = time.strftime("%a, %d %b %Y %H:%M:%S %z", time.localtime())
 
 # Templated Changelog Entry 
 template = """%(pkg_name)s (%(pkg_version)s) %(pkg_distrib)s; urgency=low
